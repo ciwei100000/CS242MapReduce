@@ -1,10 +1,11 @@
 
 
+import java.net.URI;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
@@ -16,7 +17,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-@SuppressWarnings("deprecation")
+
 public class StopWordSkipper {
 	
 	public enum COUNTERS {
@@ -29,7 +30,7 @@ public class StopWordSkipper {
 		GenericOptionsParser parser = new GenericOptionsParser(conf, args);
 		args = parser.getRemainingArgs();
 		
-		Job job = new Job(conf, "StopWordSkipper");
+		Job job = Job.getInstance(conf, "StopWordSkipper");
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(IntWritable.class);
 		job.setJarByClass(StopWordSkipper.class);
@@ -38,15 +39,14 @@ public class StopWordSkipper {
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setOutputFormatClass(TextOutputFormat.class);
 
-		List<String> other_args = new ArrayList<String>();
+		List<String> other_args = new ArrayList<>();
 		// Logic to read the location of stop word file from the command line
 		// The argument after -skip option will be taken as the location of stop
 		// word file
 
 		for (int i = 0; i < args.length; i++) {
 			if ("-skip".equals(args[i])) {
-				DistributedCache.addCacheFile(new Path(args[++i]).toUri(),
-						job.getConfiguration());
+				job.addCacheFile(new URI(args[++i]));
 				if (i+1 < args.length)
 				{
 					i++;
