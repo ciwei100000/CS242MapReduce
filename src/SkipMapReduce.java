@@ -34,7 +34,7 @@ import java.io.StringReader;
 
 public class SkipMapReduce {
 
-	public class SkipMapper extends Mapper<LongWritable, Text, Text, Text> {
+	static public class SkipMapper extends Mapper<LongWritable, Text, Text, Text> {
 
 		private Text word = new Text();
 		private Set<String> stopWordList = new HashSet<String>();
@@ -276,7 +276,7 @@ public class SkipMapReduce {
 	}
 
 
-	public class SkipReducer extends Reducer<Text, Text, Text, Text> {
+	static public class SkipReducer extends Reducer<Text, Text, Text, Text> {
 
 
 		@Override
@@ -296,7 +296,7 @@ public class SkipMapReduce {
 
 
 			List<Map.Entry<String, Integer>> entryArrayList = new ArrayList<>(wordAndCnt.entrySet());
-			Collections.sort(entryArrayList, Comparator.comparing(Map.Entry::getValue));
+			Collections.sort(entryArrayList, Comparator.comparing(Map.Entry::getKey));
 			//		for (Map.Entry<String, Integer> entry : entryArrayList) {
 			//			System.out.println(entry.getKey() + " - " + entry.getValue());
 			//		}
