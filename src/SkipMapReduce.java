@@ -19,6 +19,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
+import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.core.LowerCaseFilterFactory;
@@ -29,10 +30,10 @@ import org.apache.lucene.analysis.standard.StandardFilterFactory;
 import org.apache.lucene.analysis.standard.StandardTokenizerFactory;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
-import javax.xml.soap.Text;
 import java.io.StringReader;
 
 public class SkipMapReduce {
+
 	public class SkipMapper extends Mapper<LongWritable, Text, Text, Text> {
 
 		private Text word = new Text();
@@ -46,15 +47,12 @@ public class SkipMapReduce {
 		 * org.apache.hadoop.mapreduce.Mapper#setup(org.apache.hadoop.mapreduce.
 		 * Mapper.Context)
 		 */
-		@SuppressWarnings("deprecation")
 		protected void setup(Context context) throws java.io.IOException,
 				InterruptedException {
 
 			try {
 
-				Path[] stopWordFiles = new Path[0];
-				stopWordFiles = context.getLocalCacheFiles();
-				System.out.println(stopWordFiles.toString());
+				Path[] stopWordFiles = context.getLocalCacheFiles();
 
 				if (stopWordFiles != null && stopWordFiles.length > 0) {
 					for (Path stopWordFile : stopWordFiles) {
@@ -287,8 +285,8 @@ public class SkipMapReduce {
 
 
 			Map<String, Integer> wordAndCnt = new HashMap<>();
-			while (values.hasNext()) {
-				String vocab = values.next().toString();
+			while (values.iterator().hasNext()) {
+				String vocab = values.iterator().next().toString();
 				Integer current = wordAndCnt.get(vocab);
 				if (current == null) {
 					current = 0;
