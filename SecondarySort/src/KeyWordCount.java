@@ -1,11 +1,8 @@
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -21,19 +18,18 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.*;
 
 public class KeyWordCount {
 
-    static public class WordMapper extends Mapper<LongWritable, Text, KeywordDocIdPair, IntWritable> {
+    static public class WordMapper extends Mapper<LongWritable, Text, KeywordDocIdPair, LongWritable> {
 
         private final Text word = new Text();
         private final Text id = new Text();
         private final KeywordDocIdPair pair = new KeywordDocIdPair();
-        private static final IntWritable ONE = new IntWritable(1);
+        private static final LongWritable ONE = new LongWritable(1);
         private static Analyzer analyzer;
-        private String field;
-        private String docID;
+        //private String field;
+        //private String docID;
         private String line;
         private String[] fields;
         private TokenStream tokenStream;
@@ -43,7 +39,6 @@ public class KeyWordCount {
 
         @Override
         protected void setup(Context context) throws IOException {
-
             analyzer = CustomAnalyzer.builder()
                     .withTokenizer(StandardTokenizerFactory.class)
                     .addTokenFilter(StandardFilterFactory.class)
@@ -67,72 +62,52 @@ public class KeyWordCount {
                 return;
             }
 
-            field = fields[4];
-            docID = fields[0];
+            //field = fields[4];
+            //docID = fields[0];
 
 
-            tokenStream = analyzer.tokenStream("content", new StringReader(field));
+            tokenStream = analyzer.tokenStream("content", fields[4]);
             charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
 
             tokenStream.reset();
 
             while (tokenStream.incrementToken()) {
                 word.set(charTermAttribute.toString());
-                id.set(docID);
+                id.set(fields[0]);
                 pair.setKeyword(word);
                 pair.setDocId(id);
                 context.write(pair,ONE);
             }
 
+            tokenStream.close();
+
         }
     }
 
 
-    static public class WordReducer extends Reducer<KeywordDocIdPair, IntWritable, Text, Text> {
+    static public class WordReducer extends Reducer<KeywordDocIdPair, LongWritable, KeywordDocIdPair, LongWritable> {
 
-        private final Text keyword = new Text();
-        private final Text invertedlist = new Text();
-        private KeywordDocIdPair pair;
-        private final StringBuilder toReturn = new StringBuilder();
-        private boolean isfirst;
+        private LongWritable reducerValue = new LongWritable();
 
 
         @Override
-        public void reduce(final KeywordDocIdPair key, final Iterable<IntWritable> values, final Context context)
+        public void reduce(final KeywordDocIdPair key, final Iterable<LongWritable> values, final Context context)
                 throws IOException, InterruptedException {
 
             int sum = 0;
-            for (IntWritable value:values){
+            for (LongWritable value:values){
                 sum += value.get();
             }
 
+            reducerValue.set(sum);
 
-            isfirst = true;
-            if(toReturn.length() != 0){
-                toReturn.setLength(0);
-            }
-
-            for (Map.Entry<String, Integer> entry : entryArrayList) {
-                if (!isfirst) {
-                    toReturn.append(";");
-                }
-                isfirst = false;
-                toReturn.append(entry.getKey()).append(":").append(entry.getValue());
-            }
-
-
-            //		TreeMap<String, Integer> treeMap = new TreeMap<>();
-
-            keyword.set(key);
-            invertedlist.set(toReturn.toString());
-
-            context.write(keyword, invertedlist);
+            context.write(key, reducerValue);
 
         }
 
     }
 
-    static class KeywordDocIdPair implements WritableComparable<KeywordDocIdPair> {
+    public static class KeywordDocIdPair implements WritableComparable<KeywordDocIdPair> {
 
         private Text keyword = new Text();
         private Text docId = new Text();
@@ -161,6 +136,11 @@ public class KeyWordCount {
         }
 
         @Override
+        public String toString() {
+            return this.keyword + "\t" + this.docId;
+        }
+
+        @Override
         public int hashCode() {
             return this.keyword.hashCode()*1990+ this.docId.hashCode()*926;
         }
@@ -185,5 +165,36 @@ public class KeyWordCount {
         public Text getDocId(){
             return this.docId;
         }
+
+
+    }
+
+    public static class KeywordDocIdPairPartioner extends Partitioner<KeywordDocIdPair, IntWritable> {
+
+        @Override
+        public int getPartition(KeywordDocIdPair pair, IntWritable intWritable, int i) {
+            return Math.abs(pair.getKeyword().hashCode() % i);
+        }
+    }
+
+    public static class KeywordDocIdPairGroupingComparator extends WritableComparator {
+
+        public KeywordDocIdPairGroupingComparator() {
+            super(KeywordDocIdPair.class,true);
+        }
+
+        @Override
+        public int compare(WritableComparable a, WritableComparable b) {
+            KeywordDocIdPair pair1 = (KeywordDocIdPair) a;
+            KeywordDocIdPair pair2 = (KeywordDocIdPair) b;
+
+            int compareValue = pair1.getKeyword().compareTo(pair2.getKeyword());
+            if (compareValue == 0){
+                compareValue = pair1.getDocId().compareTo(pair2.getDocId());
+            }
+
+            return compareValue;
+        }
+
     }
 }
