@@ -17,9 +17,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.io.StringReader;
 
-public class KeyWordCount {
+
+class KeyWordCount {
 
     static public class WordMapper extends Mapper<LongWritable, Text, KeywordDocIdPair, LongWritable> {
 
@@ -28,24 +28,34 @@ public class KeyWordCount {
         private final KeywordDocIdPair pair = new KeywordDocIdPair();
         private static final LongWritable ONE = new LongWritable(1);
         private static Analyzer analyzer;
-        //private String field;
-        //private String docID;
         private String line;
         private String[] fields;
         private TokenStream tokenStream;
         private CharTermAttribute charTermAttribute;
 
 
-
         @Override
         protected void setup(Context context) throws IOException {
-            analyzer = CustomAnalyzer.builder()
-                    .withTokenizer(StandardTokenizerFactory.class)
-                    .addTokenFilter(StandardFilterFactory.class)
-                    .addTokenFilter(LowerCaseFilterFactory.class)
-                    .addTokenFilter(StopFilterFactory.class)
-                    .addTokenFilter(KStemFilterFactory.class)
-                    .build();
+            try {
+
+                analyzer = CustomAnalyzer.builder()
+                        .withTokenizer(StandardTokenizerFactory.class)
+                        .addTokenFilter(StandardFilterFactory.class)
+                        .addTokenFilter(LowerCaseFilterFactory.class)
+                        .addTokenFilter(KStemFilterFactory.class)
+                        .addTokenFilter(StopFilterFactory.class, "ignoreCase", "false", "words", "stopwords.txt", "format", "wordset")
+                        .build();
+
+            } catch (IOException ex) {
+                System.out.println("Cannot find custom stopword.txt, using default");
+                analyzer = CustomAnalyzer.builder()
+                        .withTokenizer(StandardTokenizerFactory.class)
+                        .addTokenFilter(StandardFilterFactory.class)
+                        .addTokenFilter(LowerCaseFilterFactory.class)
+                        .addTokenFilter(KStemFilterFactory.class)
+                        .addTokenFilter(StopFilterFactory.class)
+                        .build();
+            }
         }
 
         public void map(final LongWritable key, final Text value, final Context context)
@@ -76,7 +86,7 @@ public class KeyWordCount {
                 id.set(fields[0]);
                 pair.setKeyword(word);
                 pair.setDocId(id);
-                context.write(pair,ONE);
+                context.write(pair, ONE);
             }
 
             tokenStream.close();
@@ -95,7 +105,7 @@ public class KeyWordCount {
                 throws IOException, InterruptedException {
 
             int sum = 0;
-            for (LongWritable value:values){
+            for (LongWritable value : values) {
                 sum += value.get();
             }
 
@@ -114,7 +124,7 @@ public class KeyWordCount {
 
 
         @Override
-        public int compareTo(KeywordDocIdPair pair){
+        public int compareTo(KeywordDocIdPair pair) {
             int compareValue = this.keyword.compareTo(pair.getKeyword());
             if (compareValue == 0) {
                 compareValue = this.docId.compareTo(pair.getDocId());
@@ -124,13 +134,13 @@ public class KeyWordCount {
         }
 
         @Override
-        public void write(DataOutput dataOutput) throws IOException{
+        public void write(DataOutput dataOutput) throws IOException {
             keyword.write(dataOutput);
             docId.write(dataOutput);
         }
 
         @Override
-        public void readFields(DataInput dataInput) throws IOException{
+        public void readFields(DataInput dataInput) throws IOException {
             keyword.readFields(dataInput);
             docId.readFields(dataInput);
         }
@@ -142,13 +152,9 @@ public class KeyWordCount {
 
         @Override
         public int hashCode() {
-            return this.keyword.hashCode()*1990+ this.docId.hashCode()*926;
+            return this.keyword.hashCode() * 1990 + this.docId.hashCode() * 926;
         }
 
-        public boolean equals(KeywordDocIdPair pair) {
-            return this.keyword.equals(pair.getKeyword()) && this.docId.equals(pair.getDocId());
-
-        }
 
         public void setKeyword(Text keyword) {
             this.keyword = keyword;
@@ -158,11 +164,11 @@ public class KeyWordCount {
             this.docId = docId;
         }
 
-        public Text getKeyword(){
+        public Text getKeyword() {
             return this.keyword;
         }
 
-        public Text getDocId(){
+        public Text getDocId() {
             return this.docId;
         }
 
@@ -180,7 +186,7 @@ public class KeyWordCount {
     public static class KeywordDocIdPairGroupingComparator extends WritableComparator {
 
         public KeywordDocIdPairGroupingComparator() {
-            super(KeywordDocIdPair.class,true);
+            super(KeywordDocIdPair.class, true);
         }
 
         @Override
@@ -189,7 +195,7 @@ public class KeyWordCount {
             KeywordDocIdPair pair2 = (KeywordDocIdPair) b;
 
             int compareValue = pair1.getKeyword().compareTo(pair2.getKeyword());
-            if (compareValue == 0){
+            if (compareValue == 0) {
                 compareValue = pair1.getDocId().compareTo(pair2.getDocId());
             }
 

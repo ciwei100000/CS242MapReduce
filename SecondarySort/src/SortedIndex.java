@@ -1,3 +1,4 @@
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -8,7 +9,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-public class SortedIndex {
+class SortedIndex {
 
     static public class SortMapper extends Mapper<LongWritable, Text, KeywordCountPair, Text> {
 
